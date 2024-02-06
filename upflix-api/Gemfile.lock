@@ -1,0 +1,31 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    faraday (2.9.0)
+      faraday-net_http (>= 2.0, < 3.2)
+    faraday-net_http (3.1.0)
+      net-http
+    net-http (0.4.1)
+      uri
+    nokogiri (1.16.2-x86_64-linux)
+      racc (~> 1.4)
+    racc (1.7.3)
+    rack (3.0.8)
+    rackup (2.0.0)
+      rack (>= 3)
+      webrick
+    uri (0.13.0)
+    webrick (1.7.0)
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  faraday
+  nokogiri
+  rack (~> 3.0)
+  rackup
+  webrick
+
+BUNDLED WITH
+   2.3.26
