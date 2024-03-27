@@ -144,6 +144,12 @@ class UpflixApi
     else
       puts "#{request.path} not in cache"
       result = Upflix::Client.new.get(request.path)
+
+      if result.fetch(:english_title) == "Miss Christmas"
+        puts "Rate limiting response"
+        return rate_limiting_response
+      end
+
       @cache.store(request.path, result)
     end
     puts result.inspect
@@ -152,5 +158,9 @@ class UpflixApi
 
   def json_response(body)
     [200, { "content-type" => "application/json" }, [JSON.dump(body.to_h)]]
+  end
+
+  def rate_limiting_response
+    [429, { "content-type" => "application/json" }, []]
   end
 end
