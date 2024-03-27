@@ -131,6 +131,10 @@ class UpflixApi
     @upflix_client = Upflix::Client.new
     request = Rack::Request.new(env)
 
+    if request.path == "/favicon.ico"
+      return [404, {}, []]
+    end
+
     if !request.params["force"] && @cache.has?(request.path)
       puts "#{request.path} in cache"
       result = @cache.get(request.path)
