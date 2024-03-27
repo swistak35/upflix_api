@@ -2,6 +2,7 @@ require 'json'
 require 'faraday'
 require "rack"
 require "nokogiri"
+require "pstore"
 
 module Upflix
   BASE_URL = "https://upflix.pl"
@@ -76,6 +77,43 @@ module Upflix
 end
 
 class Cache
+  VALIDITY_PERIOD = 7 * 24 * 60 * 60 # 7 days
+
+  def initialize
+    @pstore = PStore.new("cache.pstore")
+  end
+
+  def has?(key)
+    @pstore.transaction do
+      value = @pstore[key]
+      if value && valid?(value)
+        value
+      else
+        nil
+      end
+    end
+  end
+
+  def get(key)
+    @pstore.transaction do
+      value = @pstore[key]
+      if valid?(value)
+        value
+      else
+        nil
+      end
+    end
+  end
+
+  def store(key, value)
+    @pstore.transaction do
+      @pstore[key] = value
+    end
+  end
+
+  def valid?(value)
+    Time.parse(value.fetch(:fetched_at)) > (Time.now.utc - VALIDITY_PERIOD)
+  end
 end
 
 class UpflixApi
@@ -85,10 +123,23 @@ class UpflixApi
     end
   end
 
+  def initialize
+    @cache = Cache.new
+  end
+
   def call(env)
     @upflix_client = Upflix::Client.new
     request = Rack::Request.new(env)
-    result = Upflix::Client.new.get(request.path)
+
+    if !request.params["force"] && @cache.has?(request.path)
+      puts "#{request.path} in cache"
+      result = @cache.get(request.path)
+    else
+      puts "#{request.path} not in cache"
+      result = Upflix::Client.new.get(request.path)
+      @cache.store(request.path, result)
+    end
+    puts result.inspect
     json_response(result)
   end
 
