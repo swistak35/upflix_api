@@ -15,12 +15,18 @@ module Upflix
       fetched_at = Time.now.utc.iso8601
       response = http_client.get(upflix_path)
       xml = Nokogiri.parse(response.body)
+
+      filmweb_link = get_link(xml.css("a.fw")&.first&.attribute("href")&.to_s)
+      imdb_link = get_link(xml.css("a.im")&.first&.attribute("href")&.to_s)
+
       {
         fetched_at:,
         polish_title: polish_title(xml),
         english_title: english_title(xml),
         year: year(xml),
         genres: genres(xml),
+        filmweb_url: filmweb_link,
+        imdb_url: imdb_link,
         **vods(xml),
       }
     end
@@ -55,6 +61,14 @@ module Upflix
         subscriptions: subscriptions,
         rents: rents
       }
+    end
+
+    def get_link(maybe_url)
+      return nil if maybe_url.nil?
+
+      response = http_client.get(maybe_url)
+
+      response.headers["location"]
     end
 
     attr_reader :http_client
