@@ -15,6 +15,7 @@ module Upflix
     def get(upflix_path)
       fetched_at = Time.now.utc.iso8601
       response = http_client.get(upflix_path)
+      sleep 3
       xml = Nokogiri.parse(response.body)
 
       filmweb_link = get_link(xml.css("a.fw")&.first&.attribute("href")&.to_s)
