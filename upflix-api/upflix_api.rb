@@ -15,7 +15,6 @@ module Upflix
     def get(upflix_path)
       fetched_at = Time.now.utc.iso8601
       response = http_client.get(upflix_path)
-      sleep 3
       xml = Nokogiri.parse(response.body)
 
       filmweb_link = get_link(xml.css("a.fw")&.first&.attribute("href")&.to_s)
@@ -117,6 +116,22 @@ class Cache
   end
 end
 
+class RateLimiter
+  RATE_LIMITING_PERIOD = 10 * 60 # 10 minutes
+
+  def initialize
+    @recently_failed = Time.new(2024)
+  end
+
+  def failed!
+    @recently_failed = Time.now
+  end
+
+  def active?
+    @recently_failed > (Time.now - RATE_LIMITING_PERIOD)
+  end
+end
+
 class UpflixApi
   def self.for(_host = nil, _root_path = nil)
     Rack::Builder.new do
@@ -126,6 +141,7 @@ class UpflixApi
 
   def initialize
     @cache = Cache.new
+    @rate_limiter = RateLimiter.new
   end
 
   def call(env)
@@ -138,6 +154,11 @@ class UpflixApi
       return [404, {}, []]
     end
 
+    if !request.params["force"] && @rate_limiter.active?
+      puts "Rate limiting, because recently rate limited"
+      return rate_limiting_response
+    end
+
     if !request.params["force"] && @cache.has?(request.path)
       puts "#{request.path} in cache"
       result = @cache.get(request.path)
@@ -146,6 +167,7 @@ class UpflixApi
       result = Upflix::Client.new.get(request.path)
 
       if result.fetch(:english_title) == "Miss Christmas"
+        @rate_limiter.failed!
         puts "Rate limiting response"
         return rate_limiting_response
       end
